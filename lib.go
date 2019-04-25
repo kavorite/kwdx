@@ -82,6 +82,7 @@ func (K Keywords) Swap(i, j int) {
 // `nil`).
 func (xtr Sieve) Sift(document string) (K Keywords) {
 	D, _ := prose.NewDocument(document)
+	bow := make(map[string]struct{}, len(D.Tokens()))
 	K.Tokens = make([]string, 0, len(D.Tokens()))
 	K.Rankings = make([]float64, len(D.Tokens()))
 	for _, t := range D.Tokens() {
@@ -89,6 +90,10 @@ func (xtr Sieve) Sift(document string) (K Keywords) {
 		if _, ok := xtr.Stopwords[k]; ok {
 			continue
 		}
+		if _, ok := bow[k]; ok {
+			continue
+		}
+		bow[k] = struct{}{}
 		K.Tokens = append(K.Tokens, k)
 	}
 	G := pagerank.NewGraph()
