@@ -80,8 +80,10 @@ func (K Keywords) Swap(i, j int) {
 // ideas or entities in a document through PageRank and word embeddings.
 // Ignores those terms for which no word vector can be found (xtr.Embed returns
 // `nil`).
-func (xtr Sieve) Sift(D prose.Document) (K Keywords) {
+func (xtr Sieve) Sift(document string) (K Keywords) {
+	D, _ := prose.NewDocument(document)
 	K.Tokens = make([]string, 0, len(D.Tokens()))
+	K.Rankings = make([]float64, len(D.Tokens()))
 	for _, t := range D.Tokens() {
 		k := strings.ToLower(t.Text)
 		if _, ok := xtr.Stopwords[k]; ok {
@@ -110,6 +112,7 @@ func (xtr Sieve) Sift(D prose.Document) (K Keywords) {
 	G.Rank(0.85, 1e-6, func(i uint32, rank float64) {
 		K.Rankings[int(i)] = rank
 	})
+	K.Rankings = K.Rankings[:len(K.Tokens)]
 	sort.Sort(K)
 	return K
 }
