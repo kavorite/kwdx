@@ -1,12 +1,50 @@
 package kwdx
 
 import (
+	"sort"
+	"strings"
+	"unicode"
+
+	"golang.org/x/text/transform"
+	"golang.org/x/text/unicode/norm"
+	"golang.org/x/text/runes"
+
 	"github.com/alixaxel/pagerank"
 	"gonum.org/v1/gonum/mat"
 	"gopkg.in/jdkato/prose.v2"
-	"sort"
-	"strings"
 )
+
+var normTx = transform.Chain(
+	runes.Map(unicode.ToLower),
+	norm.NFD,
+	transform.RemoveFunc(func(r rune) bool {
+		return unicode.Is(unicode.Mn, r)
+	}),
+	transform.RemoveFunc(func(r rune) bool {
+		return unicode.Is(unicode.P, r)
+	}),
+	norm.NFC)
+
+func normalize(x string) string {
+	rtn, _, _ := transform.String(normTx, x)
+	return rtn
+}
+
+func wordbag(blob string) map[string]struct{} {
+	D, _ := prose.NewDocument(blob)
+	bow := make(map[string]struct{}, len(D.Tokens()))
+	for _, t := range D.Tokens() {
+		lex := strings.FieldsFunc(t.Text, func(r rune) bool {
+			return unicode.Is(unicode.Mn, r) || unicode.Is(unicode.P, r)
+		})
+		for _, t := range lex {
+			if t != "" {
+				bow[normalize(t)] = struct{}{}
+			}
+		}
+	}
+	return bow
+}
 
 // Sieve extracts keywords from a given prose Document.
 type Sieve struct {
@@ -81,20 +119,14 @@ func (K Keywords) Swap(i, j int) {
 // Ignores those terms for which no word vector can be found (xtr.Embed returns
 // `nil`).
 func (xtr Sieve) Sift(document string) (K Keywords) {
-	D, _ := prose.NewDocument(document)
-	bow := make(map[string]struct{}, len(D.Tokens()))
-	K.Tokens = make([]string, 0, len(D.Tokens()))
-	K.Rankings = make([]float64, len(D.Tokens()))
-	for _, t := range D.Tokens() {
-		k := strings.ToLower(t.Text)
-		if _, ok := xtr.Stopwords[k]; ok {
+	T := wordbag(document)
+	K.Tokens = make([]string, 0, len(T))
+	K.Rankings = make([]float64, len(T))
+	for t := range T {
+		if _, ok := xtr.Stopwords[t]; ok {
 			continue
 		}
-		if _, ok := bow[k]; ok {
-			continue
-		}
-		bow[k] = struct{}{}
-		K.Tokens = append(K.Tokens, k)
+		K.Tokens = append(K.Tokens, t)
 	}
 	G := pagerank.NewGraph()
 	for i, k := range K.Tokens {
