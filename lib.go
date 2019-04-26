@@ -18,10 +18,7 @@ var normTx = transform.Chain(
 	runes.Map(unicode.ToLower),
 	norm.NFD,
 	transform.RemoveFunc(func(r rune) bool {
-		return unicode.Is(unicode.Mn, r)
-	}),
-	transform.RemoveFunc(func(r rune) bool {
-		return unicode.Is(unicode.P, r)
+		return !(unicode.Is(unicode.L, r) || unicode.Is(unicode.N, r))
 	}),
 	norm.NFC)
 
@@ -36,7 +33,7 @@ func BOW(blob string) map[string]struct{} {
 	bow := make(map[string]struct{}, len(D.Tokens()))
 	for _, t := range D.Tokens() {
 		lex := strings.FieldsFunc(t.Text, func(r rune) bool {
-			return unicode.Is(unicode.Mn, r) || unicode.Is(unicode.P, r)
+			return !(unicode.Is(unicode.L, r) || unicode.Is(unicode.N, r))
 		})
 		for _, t := range lex {
 			if t != "" {
