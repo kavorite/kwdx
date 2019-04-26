@@ -30,7 +30,8 @@ func normalize(x string) string {
 	return rtn
 }
 
-func wordbag(blob string) map[string]struct{} {
+// BOW returns a bag of words from the given document.
+func BOW(blob string) map[string]struct{} {
 	D, _ := prose.NewDocument(blob)
 	bow := make(map[string]struct{}, len(D.Tokens()))
 	for _, t := range D.Tokens() {
@@ -112,14 +113,12 @@ func (K Keywords) Swap(i, j int) {
 	K.Tokens[j] = tmps
 }
 
-// Sift uses the cosine similarities of unique terms' embeddings in the
-// document to rank the centrality of terms, exploiting frequency of
-// topically-relevant siblings in a bag-of-words to learn separate central
-// ideas or entities in a document through PageRank and word embeddings.
-// Ignores those terms for which no word vector can be found (xtr.Embed returns
-// `nil`).
-func (xtr Sieve) Sift(document string) (K Keywords) {
-	T := wordbag(document)
+// Sift uses the cosine similarities of unique terms' embeddings in the given
+// bag of words to rank the centrality of terms, exploiting frequency of
+// topically-relevant siblings to learn separate central ideas or entities in a
+// document through PageRank and word embeddings. Ignores those terms for
+// which no word vector can be found (xtr.Embed returns `nil`).
+func (xtr Sieve) Sift(T map[string]struct{}) (K Keywords) {
 	K.Tokens = make([]string, 0, len(T))
 	K.Rankings = make([]float64, len(T))
 	for t := range T {
@@ -152,4 +151,10 @@ func (xtr Sieve) Sift(document string) (K Keywords) {
 	K.Rankings = K.Rankings[:len(K.Tokens)]
 	sort.Sort(K)
 	return K
+}
+
+// SiftString performs a normalized tokenization to generate a bag-of-words,
+// then a sift.
+func (xtr Sieve) SiftString(D string) Keywords {
+	return xtr.Sift(BOW(D))
 }
